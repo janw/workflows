@@ -1,0 +1,27 @@
+name: Gitlint
+
+on:
+  workflow_call:
+    inputs:
+      first-commit:
+        required: true
+        type: string
+
+jobs:
+  gitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up python environment
+        uses: actions/setup-python@v4
+        with:
+          cache: 'pip'
+
+      - name: Install gitlint
+        run: pip install gitlint
+
+      - run: gitlint --fail-without-commits --commits ${{ inputs.first-commit }}..HEAD
