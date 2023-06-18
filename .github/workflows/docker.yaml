@@ -11,6 +11,10 @@ on:
         required: false
         type: boolean
         default: false
+      image-name:
+        required: false
+        type: string
+        default: ${{ github.repository }}
       skip-hadolint:
         required: false
         type: boolean
@@ -43,7 +47,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: "ghcr.io/${{ github.repository }}"
+          images: "ghcr.io/${{ inputs.image-name }}"
           tags: |
             type=ref,event=pr
             type=semver,pattern=v{{major}}
