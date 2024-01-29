@@ -3,13 +3,12 @@ name: Linters
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   pre-commit:
     uses: ./.github/workflows/pre-commit.yaml
 
-  gitlint:
-    uses: ./.github/workflows/gitlint.yaml
-    with:
-      first-commit: 13ae0fa
+  commitizen:
+    uses: ./.github/workflows/commitizen.yaml
