@@ -1,0 +1,86 @@
+name: Bump version
+
+on:
+  workflow_call:
+    secrets:
+      personal-access-token:
+        required: true
+      gpg-private-key:
+        required: true
+      gpg-passphrase:
+        required: true
+
+jobs:
+  bump-version:
+    if: >
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+      && !startsWith(github.event.head_commit.message, 'bump:')
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.personal-access-token }}
+          fetch-depth: 0
+          # Check out any possible commitizen config file.
+          # Must also include all files from commitizen's
+          # `version_files` setting.
+          # Nonexistent files will be ignored.
+          sparse-checkout: |
+            .cz.toml
+            .cz.json
+            .cz.yaml
+            cz.json
+            cz.yaml
+            pyproject.toml
+            podcast_archiver/__init__.py
+            README.md
+            CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        id: gpg-import
+        with:
+          gpg_private_key: ${{ secrets.gpg-private-key }}
+          passphrase: ${{ secrets.gpg-passphrase }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: List keys
+        run: gpg -K
+
+      - name: Install commitizen
+        run: pipx install commitizen
+
+      - name: Create bump and changelog
+        shell: bash
+        run: |
+          REV="$(cz version --project)"
+          echo "OLD_REVISION=${REV}" >>"$GITHUB_ENV"
+
+          cz --no-raise 21 \
+            bump --changelog-to-stdout | tee body.md
+
+          REV="$(cz version --project)"
+          echo "NEW_REVISION=${REV}" >>"$GITHUB_ENV"
+
+          echo "revision $OLD_REVISION => $NEW_REVISION"
+
+      - name: Verify commit signature
+        if: env.NEW_REVISION != env.OLD_REVISION
+        run: git verify-commit HEAD
+
+      - name: Push release commit
+        if: env.NEW_REVISION != env.OLD_REVISION
+        run: git push origin HEAD:${{github.event.repository.default_branch}} --tags
+
+      - name: Create GitHub release
+        if: env.NEW_REVISION != env.OLD_REVISION
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.NEW_REVISION }}
+          bodyFile: "body.md"
+          skipIfReleaseExists: true
