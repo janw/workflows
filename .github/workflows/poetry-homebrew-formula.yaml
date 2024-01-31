@@ -1,0 +1,76 @@
+name: Poetry x Homebrew Formula
+
+on:
+  workflow_call:
+    inputs:
+      tap-repository:
+        type: string
+        default: janw/homebrew-tap
+      tap-fork:
+        type: string
+        default: janw-bot/homebrew-tap
+      formula-template-path:
+        type: string
+        default: source-repo/brew/template.rb.j2
+      formula-name:
+        type: string
+        required: true
+    secrets:
+      personal-access-token:
+        required: true
+      gpg-private-key:
+        required: true
+      gpg-passphrase:
+        required: true
+
+jobs:
+  homebrew:
+    if: github.event_name == 'push' # && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.tap-repository }}
+
+      - uses: actions/checkout@v4
+        with:
+          path: 'source-repo'
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        id: gpg-import
+        with:
+          gpg_private_key: ${{ secrets.gpg-private-key }}
+          passphrase: ${{ secrets.gpg-passphrase }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: List keys
+        run: gpg -K
+
+      - name: Install poetry + poetry-brew
+        run: |
+          pipx install 'poetry>=1.7.0'
+          pipx inject poetry poetry-homebrew-formula
+
+      - name: Update formula
+        shell: bash
+        run: |
+          poetry homebrew-formula -C source-repo/ \
+          --verbose \
+          --template ${{ inputs.formula-template-path }} \
+          --output ./Formula/${{ inputs.formula-name }}.rb
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          add-paths: |
+            Formula/*
+          commit-message: "bump(${{ inputs.formula-name }}): ${{github.ref_name}}"
+          title: "bump(${{ inputs.formula-name }}): ${{github.ref_name}}"
+          body: ""
+          token: ${{ secrets.personal-access-token }}
+          push-to-fork: ${{ inputs.tap-fork }}
+          committer: ${{ steps.gpg-import.outputs.name }} <${{ steps.gpg-import.outputs.email }}>
+          branch: bump-formula/${{ inputs.formula-name }}-${{github.ref_name}}
