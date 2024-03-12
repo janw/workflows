@@ -8,7 +8,7 @@ on:
 
 jobs:
   rich-codex:
-    if: "!startsWith(github.event.head_commit.message, 'build(rich-codex):')"
+    if: "!startsWith(github.event.head_commit.message, 'build(rich-codex):') && secrets.token != ''"
     runs-on: ubuntu-latest
     permissions:
       contents: write
