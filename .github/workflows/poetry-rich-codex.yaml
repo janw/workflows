@@ -8,15 +8,13 @@ on:
 
 jobs:
   rich-codex:
-    if: "!startsWith(github.event.head_commit.message, 'build(rich-codex):')"
+    if: "!startsWith(github.event.head_commit.message, 'Generate new screengrabs')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.token }}
 
       - name: Install poetry
         run: pipx install poetry
@@ -28,36 +26,17 @@ jobs:
           python-version: 3.x
 
       - name: Install dependencies
-        run: poetry install --sync --with=dev
-
-      - name: Run rich-codex
-        id: rich-codex
         run: |
-          poetry run rich-codex
+          poetry install --sync --with=dev
+          source $(poetry env info -p)/bin/activate
 
-          if [ -f "created.txt" ] || [ -f "deleted.txt" ]; then
-            echo "has-changes=true" >>$GITHUB_OUTPUT
-          fi
+      - name: Generate terminal images with rich-codex
+        uses: ewels/rich-codex@v1
+        with:
+          commit_changes: "true"
+          clean_img_paths: ./assets/*.svg
+          terminal_width: 140
+          terminal_theme: MONOKAI
+          skip_git_checks: "true"
         env:
-          CLEAN_IMG_PATHS: ./assets/*.svg
           FORCE_COLOR: "1"
-          TERMINAL_WIDTH: "140"
-          TERMINAL_THEME: MONOKAI
-          CREATED_FILES: "created.txt"
-          DELETED_FILES: "deleted.txt"
-          NO_CONFIRM: "true"
-          SKIP_GIT_CHECKS: "true"
-
-      - name: Add and commit new images
-        if: steps.rich-codex.outputs.has-changes
-        shell: bash
-        run: |
-          echo "Found changes from running rich-codex, committing ..."
-
-          git config --local user.name 'Jan Willhaus [bot]'
-          git config --local user.email 'bot@janw.xyz'
-
-          [ -f "created.txt" ] && git add $(cat created.txt)
-          [ -f "deleted.txt" ] && git rm $(cat deleted.txt)
-          git commit -m "build(rich-codex): Update screengrabs"
-          git push
