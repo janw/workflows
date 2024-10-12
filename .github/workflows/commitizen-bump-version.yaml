@@ -84,4 +84,5 @@ jobs:
           tag: v${{ env.NEW_REVISION }}
           bodyFile: "body.md"
           skipIfReleaseExists: true
+          generateReleaseNotes: true
           token: ${{ secrets.personal-access-token }}
