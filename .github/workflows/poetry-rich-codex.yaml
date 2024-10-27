@@ -4,11 +4,11 @@ on:
   workflow_call:
     secrets:
       token:
-        required: false
+        required: true
 
 jobs:
   rich-codex:
-    if: "!startsWith(github.event.head_commit.message, 'build(rich-codex):') && secrets.token != ''"
+    if: "!startsWith(github.event.head_commit.message, 'build(rich-codex):')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
