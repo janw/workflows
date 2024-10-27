@@ -3,7 +3,7 @@ name: Poetry x rich-codex
 on:
   workflow_call:
     secrets:
-      token:
+      personal-access-token:
         required: true
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.token }}
+          token: ${{ secrets.personal-access-token }}
 
       - name: Install poetry
         run: pipx install poetry
@@ -54,6 +54,7 @@ jobs:
         run: |
           echo "Found changes from running rich-codex, committing ..."
 
+          git checkout "${{ github.head_ref }}" || true
           git config --local user.name 'Jan Willhaus [bot]'
           git config --local user.email 'bot@janw.xyz'
 
